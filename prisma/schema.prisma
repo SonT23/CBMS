@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String   @map("mat_khau_hash")
+  role         String   @default("PATIENT")
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now()) @map("created_at")
+  patient      Patient?
+
+  @@map("nguoi_dung")
+}
+
+model Patient {
+  id           Int           @id @default(autoincrement())
+  userId       Int           @unique @map("nguoi_dung_id")
+  fullName     String        @map("ho_ten")
+  gender       String?       @map("gioi_tinh")
+  user         User          @relation(fields: [userId], references: [id])
+  appointments Appointment[]
+
+  @@map("benh_nhan")
+}
+
+model Specialty {
+  id      Int      @id @default(autoincrement())
+  name    String   @map("ten")
+  doctors Doctor[]
+
+  @@map("chuyen_khoa")
+}
+
+model Doctor {
+  id           Int            @id @default(autoincrement())
+  fullName     String         @map("ho_ten")
+  specialtyId  Int            @map("chuyen_khoa_id")
+  fee          Int            @default(0) @map("phi_kham")
+  experience   Int            @default(0) @map("so_nam_kinh_nghiem")
+  rating       Float          @default(5)
+  specialty    Specialty      @relation(fields: [specialtyId], references: [id])
+  slots        ScheduleSlot[]
+  appointments Appointment[]
+
+  @@map("bac_si")
+}
+
+model ScheduleSlot {
+  id          Int          @id @default(autoincrement())
+  doctorId    Int          @map("bac_si_id")
+  date        DateTime     @map("ngay")
+  startTime   String       @map("gio_bat_dau")
+  endTime     String       @map("gio_ket_thuc")
+  available   Boolean      @default(true) @map("con_trong")
+  doctor      Doctor       @relation(fields: [doctorId], references: [id])
+  appointment Appointment?
+
+  @@map("lich_lam_viec_bac_si")
+}
+
+model Appointment {
+  id        Int          @id @default(autoincrement())
+  code      String       @unique @map("ma_booking")
+  patientId Int          @map("benh_nhan_id")
+  doctorId  Int          @map("bac_si_id")
+  slotId    Int          @unique @map("slot_id")
+  status    String       @default("CONFIRMED")
+  note      String?      @map("ghi_chu")
+  createdAt DateTime     @default(now()) @map("created_at")
+  patient   Patient      @relation(fields: [patientId], references: [id])
+  doctor    Doctor       @relation(fields: [doctorId], references: [id])
+  slot      ScheduleSlot @relation(fields: [slotId], references: [id])
+
+  @@map("lich_kham")
+}
