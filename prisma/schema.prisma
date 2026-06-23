@@ -59,8 +59,32 @@ model Doctor {
   records       MedicalRecord[]
   labOrders     LabOrder[]
   prescriptions Prescription[]
+  workShifts    WorkShift[]
+  daysOff       DayOff[]
 
   @@map("bac_si")
+}
+
+// ===== FN-05 — Lịch làm việc bác sĩ (nguồn sinh slot) =====
+model WorkShift {
+  id          Int    @id @default(autoincrement())
+  doctorId    Int    @map("bac_si_id")
+  weekday     Int    @map("thu") // 0=CN, 1=T2, ... 6=T7
+  startTime   String @map("gio_bat_dau")
+  endTime     String @map("gio_ket_thuc")
+  slotMinutes Int    @default(30) @map("phut_moi_slot")
+  doctor      Doctor @relation(fields: [doctorId], references: [id])
+
+  @@map("ca_lam_viec")
+}
+
+model DayOff {
+  id       Int      @id @default(autoincrement())
+  doctorId Int      @map("bac_si_id")
+  date     DateTime @map("ngay")
+  doctor   Doctor   @relation(fields: [doctorId], references: [id])
+
+  @@map("ngay_nghi")
 }
 
 model ScheduleSlot {
