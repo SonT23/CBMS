@@ -7,6 +7,8 @@ export async function POST(req) {
   const user = await prisma.user.findUnique({ where: { email }, include: { patient: true } });
   if (!user || !verifyPassword(password, user.passwordHash))
     return NextResponse.json({ error: 'Sai email hoặc mật khẩu' }, { status: 401 });
+  if (user.status === 'LOCKED')
+    return NextResponse.json({ error: 'Tài khoản đã bị khóa, liên hệ quản trị viên' }, { status: 403 });
   const token = signToken({ uid: user.id, email, role: user.role });
   return NextResponse.json({ token, user: { id: user.id, email, role: user.role, fullName: user.patient?.fullName || '' } });
 }
