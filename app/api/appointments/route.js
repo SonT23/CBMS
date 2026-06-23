@@ -38,7 +38,8 @@ export async function POST(req) {
       }
       await tx.scheduleSlot.update({ where: { id: slotId }, data: { available: false } });
       const code = 'CBMS-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + String(Math.floor(1000 + Math.random() * 9000));
-      return tx.appointment.create({ data: { code, patientId: patient.id, doctorId, slotId, note: note || null, status: 'CONFIRMED' } });
+      const qrToken = require('crypto').randomBytes(8).toString('hex');
+      return tx.appointment.create({ data: { code, patientId: patient.id, doctorId, slotId, note: note || null, status: 'CONFIRMED', qrToken } });
     });
     return NextResponse.json(appt);
   } catch (e) {

@@ -86,6 +86,8 @@ model Appointment {
   note        String?        @map("ghi_chu")
   queueNumber Int?           @map("so_thu_tu")
   checkedInAt DateTime?      @map("check_in_luc")
+  qrToken      String?       @unique @map("qr_token")
+  followUpOfId Int?          @map("lich_goc_id")
   createdAt   DateTime       @default(now()) @map("created_at")
   patient     Patient        @relation(fields: [patientId], references: [id])
   doctor      Doctor         @relation(fields: [doctorId], references: [id])
@@ -94,6 +96,8 @@ model Appointment {
   invoice      Invoice?
   labOrder     LabOrder?
   prescription Prescription?
+  followUpOf   Appointment?   @relation("FollowUp", fields: [followUpOfId], references: [id])
+  followUps    Appointment[]  @relation("FollowUp")
 
   @@map("lich_kham")
 }
@@ -135,6 +139,8 @@ model Invoice {
   status        String      @default("PENDING_PAYMENT") @map("trang_thai")
   method        String?     @map("phuong_thuc")
   paidAt        DateTime?   @map("thanh_toan_luc")
+  refundedAt    DateTime?   @map("hoan_luc")
+  refundReason  String?     @map("ly_do_hoan")
   createdAt     DateTime    @default(now()) @map("created_at")
   appointment   Appointment @relation(fields: [appointmentId], references: [id])
   patient       Patient     @relation(fields: [patientId], references: [id])
@@ -191,8 +197,35 @@ model Medication {
   stock        Int                @default(0) @map("ton_kho")
   reorderLevel Int                @default(20) @map("muc_canh_bao")
   items        PrescriptionItem[]
+  batches      MedicationBatch[]
 
   @@map("thuoc")
+}
+
+// ===== OLD-7 — Lô thuốc & Nhà cung cấp =====
+model Supplier {
+  id      Int               @id @default(autoincrement())
+  name    String            @map("ten")
+  phone   String?           @map("sdt")
+  contact String?           @map("lien_he")
+  batches MedicationBatch[]
+
+  @@map("nha_cung_cap")
+}
+
+model MedicationBatch {
+  id           Int        @id @default(autoincrement())
+  medicationId Int        @map("thuoc_id")
+  supplierId   Int?       @map("nha_cung_cap_id")
+  batchNo      String     @map("so_lo")
+  quantity     Int        @default(0) @map("so_luong")
+  expiry       DateTime   @map("han_dung")
+  status       String     @default("IN_STOCK") @map("trang_thai")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  medication   Medication @relation(fields: [medicationId], references: [id])
+  supplier     Supplier?  @relation(fields: [supplierId], references: [id])
+
+  @@map("lo_thuoc")
 }
 
 model Prescription {

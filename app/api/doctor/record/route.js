@@ -56,13 +56,23 @@ export async function POST(req) {
       await tx.labOrder.delete({ where: { id: existingLab.id } });
     }
 
-    // ----- Kê đơn thuốc (M6) -----
+    // ----- Kê đơn thuốc (M6) + cảnh báo y khoa (OLD-4 / ITS-65) -----
     let medFee = 0;
+    const warnings = [];
     const cleanItems = (prescriptionItems || []).filter((it) => it.medicationId && Number(it.quantity) > 0);
     const existingPres = await tx.prescription.findUnique({ where: { appointmentId } });
     if (cleanItems.length > 0) {
       const meds = await tx.medication.findMany({ where: { id: { in: cleanItems.map((i) => Number(i.medicationId)) } } });
       const medMap = Object.fromEntries(meds.map((m) => [m.id, m]));
+      // Cảnh báo: trùng thuốc, liều/số lượng cao, tồn không đủ
+      const seen = new Set();
+      for (const it of cleanItems) {
+        const m = medMap[Number(it.medicationId)]; if (!m) continue;
+        if (seen.has(m.id)) warnings.push(`Trùng thuốc: ${m.name} xuất hiện nhiều lần trong đơn`);
+        seen.add(m.id);
+        if (Number(it.quantity) > 60) warnings.push(`Số lượng cao bất thường: ${m.name} × ${it.quantity}`);
+        if (m.stock < Number(it.quantity)) warnings.push(`Tồn kho không đủ: ${m.name} (tồn ${m.stock}, kê ${it.quantity})`);
+      }
       const pr = existingPres
         ? (await tx.prescriptionItem.deleteMany({ where: { prescriptionId: existingPres.id } }), existingPres)
         : await tx.prescription.create({ data: { code: genCode('DT'), appointmentId, patientId: appt.patientId, doctorId: appt.doctorId, status: 'NEW' } });
@@ -92,7 +102,7 @@ export async function POST(req) {
         create: { code: genCode('HD'), appointmentId, patientId: appt.patientId, examFee, labFee, medFee, totalAmount: total, status: 'PENDING_PAYMENT' },
       });
     }
-    return { record, invoice };
+    return { record, invoice, warnings };
   });
   return NextResponse.json({ ok: true, ...result });
 }

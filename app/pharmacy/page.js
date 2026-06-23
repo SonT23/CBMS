@@ -7,6 +7,10 @@ export default function PharmacyPage() {
   const router = useRouter();
   const [tab, setTab] = useState('orders');
   const [data, setData] = useState({ pending: [], meds: [], lowStock: [] });
+  const [batches, setBatches] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [bform, setBform] = useState({ medicationId: '', supplierId: '', batchNo: '', quantity: '', expiry: '' });
+  const [sname, setSname] = useState('');
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const token = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
@@ -19,7 +23,24 @@ export default function PharmacyPage() {
     setData(await res.json());
     setLoading(false);
   };
-  useEffect(() => { if (!token()) { router.push('/login'); return; } load(); }, []);
+  const loadBatches = async () => {
+    setBatches(await (await fetch('/api/pharmacy/batches', { headers: auth })).json());
+    setSuppliers(await (await fetch('/api/pharmacy/suppliers', { headers: auth })).json());
+  };
+  useEffect(() => { if (!token()) { router.push('/login'); return; } load(); loadBatches(); }, []);
+
+  const addSupplier = async () => {
+    if (!sname.trim()) return;
+    await fetch('/api/pharmacy/suppliers', { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth }, body: JSON.stringify({ name: sname }) });
+    setSname(''); loadBatches();
+  };
+  const addBatch = async () => {
+    setMsg('');
+    const res = await fetch('/api/pharmacy/batches', { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth }, body: JSON.stringify(bform) });
+    const d = await res.json();
+    setMsg(res.ok ? 'Đã nhập lô thuốc & cộng tồn kho.' : (d.error || 'Lỗi nhập lô'));
+    if (res.ok) { setBform({ medicationId: '', supplierId: '', batchNo: '', quantity: '', expiry: '' }); loadBatches(); load(); }
+  };
 
   const dispense = async (prescriptionId) => {
     setMsg('');
@@ -41,7 +62,7 @@ export default function PharmacyPage() {
         <h1 className="text-3xl font-bold mb-1">Nhà thuốc</h1>
         <p className="text-muted mb-5">Soạn &amp; xuất thuốc, quản lý tồn kho</p>
         <div className="flex bg-cream rounded-xl p-1 mb-6 w-fit">
-          {[['orders', `Đơn chờ xuất (${data.pending.length})`], ['stock', `Tồn kho${data.lowStock.length ? ` · ${data.lowStock.length} cảnh báo` : ''}`]].map(([k, label]) => (
+          {[['orders', `Đơn chờ xuất (${data.pending.length})`], ['stock', `Tồn kho${data.lowStock.length ? ` · ${data.lowStock.length} cảnh báo` : ''}`], ['batches', 'Lô & NCC']].map(([k, label]) => (
             <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-lg font-semibold text-sm ${tab === k ? 'bg-white text-coral shadow-sm' : 'text-muted'}`}>{label}</button>
           ))}
         </div>
@@ -71,7 +92,10 @@ export default function PharmacyPage() {
                     );
                   })}
                 </div>
-                <button onClick={() => dispense(p.id)} className="bg-coral text-white font-semibold px-4 py-2 rounded-xl text-sm">Xuất thuốc &amp; trừ kho</button>
+                <div className="flex gap-2">
+                  <button onClick={() => dispense(p.id)} className="bg-coral text-white font-semibold px-4 py-2 rounded-xl text-sm">Xuất thuốc &amp; trừ kho</button>
+                  <button onClick={() => window.open(`/pharmacy/label/${p.id}`, '_blank')} className="border border-[#F0E6E0] text-ink font-semibold px-4 py-2 rounded-xl text-sm">In tem</button>
+                </div>
               </div>
             ))}
           </div>
@@ -100,6 +124,58 @@ export default function PharmacyPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {tab === 'batches' && (
+          <div className="space-y-6">
+            {/* Form nhập lô */}
+            <div className="bg-white rounded-2xl border border-[#F0E6E0] shadow-sm p-4">
+              <h2 className="font-bold mb-3">Nhập lô thuốc mới</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                <select value={bform.medicationId} onChange={(e) => setBform({ ...bform, medicationId: e.target.value })} className="border border-[#F0E6E0] rounded-lg px-3 py-2 text-sm">
+                  <option value="">— Chọn thuốc —</option>
+                  {data.meds.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+                <select value={bform.supplierId} onChange={(e) => setBform({ ...bform, supplierId: e.target.value })} className="border border-[#F0E6E0] rounded-lg px-3 py-2 text-sm">
+                  <option value="">— Nhà cung cấp —</option>
+                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <input value={bform.batchNo} onChange={(e) => setBform({ ...bform, batchNo: e.target.value })} placeholder="Số lô" className="border border-[#F0E6E0] rounded-lg px-3 py-2 text-sm" />
+                <input type="number" min="1" value={bform.quantity} onChange={(e) => setBform({ ...bform, quantity: e.target.value })} placeholder="Số lượng" className="border border-[#F0E6E0] rounded-lg px-3 py-2 text-sm" />
+                <input type="date" value={bform.expiry} onChange={(e) => setBform({ ...bform, expiry: e.target.value })} className="border border-[#F0E6E0] rounded-lg px-3 py-2 text-sm" />
+                <button onClick={addBatch} className="bg-coral text-white font-semibold rounded-xl px-4 py-2 text-sm">Nhập lô</button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <input value={sname} onChange={(e) => setSname(e.target.value)} placeholder="Thêm nhà cung cấp..." className="flex-1 min-w-[180px] border border-[#F0E6E0] rounded-lg px-3 py-2 text-sm" />
+                <button onClick={addSupplier} className="border border-[#F0E6E0] text-ink font-semibold rounded-xl px-4 py-2 text-sm">+ NCC</button>
+              </div>
+            </div>
+            {/* Bảng lô */}
+            <div className="bg-white rounded-2xl border border-[#F0E6E0] shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-cream text-muted">
+                  <tr><th className="text-left px-4 py-2">Thuốc</th><th className="text-left px-4 py-2">Số lô</th><th className="text-left px-4 py-2">NCC</th><th className="text-right px-4 py-2">SL</th><th className="text-left px-4 py-2">Hạn dùng</th><th className="text-right px-4 py-2">Trạng thái</th></tr>
+                </thead>
+                <tbody>
+                  {batches.length === 0 && <tr><td colSpan={6} className="px-4 py-3 text-muted">Chưa có lô thuốc.</td></tr>}
+                  {batches.map((b) => (
+                    <tr key={b.id} className="border-t border-[#F0E6E0]">
+                      <td className="px-4 py-2 font-medium">{b.medication}</td>
+                      <td className="px-4 py-2">{b.batchNo}</td>
+                      <td className="px-4 py-2 text-muted">{b.supplier}</td>
+                      <td className="px-4 py-2 text-right">{b.quantity}</td>
+                      <td className="px-4 py-2">{new Date(b.expiry).toLocaleDateString('vi-VN')}</td>
+                      <td className="px-4 py-2 text-right">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${b.expired ? 'bg-[#FCE8E6] text-coral' : b.nearExpiry ? 'bg-[#FFF4E5] text-gold' : 'bg-[#E6F4EC] text-greenx'}`}>
+                          {b.expired ? 'Hết hạn' : b.nearExpiry ? 'Sắp hết hạn' : 'Còn hạn'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

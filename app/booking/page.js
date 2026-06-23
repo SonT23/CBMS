@@ -44,7 +44,10 @@ export default function BookingPage() {
           <h1 className="text-2xl font-bold mb-2">Đặt lịch thành công!</h1>
           <p className="text-muted mb-4">Mã đặt lịch của bạn</p>
           <div className="text-2xl font-bold text-coral mb-6">{result.code}</div>
-          <button onClick={() => router.push('/appointments')} className="bg-coral text-white font-semibold px-6 py-3 rounded-xl">Xem lịch hẹn của tôi</button>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => router.push(`/appointments/${result.id}/ticket`)} className="bg-coral text-white font-semibold px-6 py-3 rounded-xl">Xem phiếu khám điện tử (QR)</button>
+            <button onClick={() => router.push('/appointments')} className="border border-[#F0E6E0] text-ink font-semibold px-6 py-3 rounded-xl">Lịch hẹn của tôi</button>
+          </div>
         </div>
       </div>
     );

@@ -44,6 +44,7 @@ export default function AppointmentsPage() {
                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ${badge[a.status] || 'bg-cream text-muted'}`}>
                   {a.status === 'CONFIRMED' ? 'Đã xác nhận' : a.status === 'CANCELLED' ? 'Đã hủy' : a.status}
                 </span>
+                {(a.status === 'CONFIRMED' || a.status === 'CHECKED_IN') && <button onClick={() => router.push(`/appointments/${a.id}/ticket`)} className="text-sm text-teal font-semibold border border-[#F0E6E0] rounded-lg px-3 py-1.5">Phiếu QR</button>}
                 {a.status === 'CONFIRMED' && <button onClick={() => cancel(a.id)} className="text-sm text-coral font-semibold border border-[#F0E6E0] rounded-lg px-3 py-1.5">Hủy lịch</button>}
               </div>
             </div>

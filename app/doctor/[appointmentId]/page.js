@@ -23,6 +23,9 @@ export default function ExamPage() {
   const [rx, setRx] = useState([]); // [{medicationId, quantity, dosage}]
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [followSlots, setFollowSlots] = useState([]);
+  const [followSlotId, setFollowSlotId] = useState('');
+  const [followMsg, setFollowMsg] = useState('');
   const token = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
   const auth = { Authorization: `Bearer ${token()}` };
   const money = (n) => (n || 0).toLocaleString('vi-VN') + 'đ';
@@ -44,6 +47,8 @@ export default function ExamPage() {
         });
         if (d.appt.labOrder) setSelectedLabs(d.appt.labOrder.items.map((i) => i.labTestId));
         if (d.appt.prescription) setRx(d.appt.prescription.items.map((i) => ({ medicationId: i.medicationId, quantity: i.quantity, dosage: i.dosage || '' })));
+        // OLD-2: nạp khung giờ trống của bác sĩ để hẹn tái khám
+        fetch(`/api/doctors/${d.appt.doctorId}/slots`).then((r) => r.json()).then(setFollowSlots);
       });
   }, [appointmentId]);
 
@@ -72,6 +77,34 @@ export default function ExamPage() {
     if (!res.ok) { setMsg(d.error || 'Lỗi lưu bệnh án'); return; }
     if (complete) { router.push('/doctor'); return; }
     setMsg('Đã lưu nháp bệnh án, chỉ định & đơn thuốc.');
+  };
+
+  // OLD-4 — cảnh báo y khoa tự động (tính trực tiếp từ đơn đang kê)
+  const medWarnings = (() => {
+    const w = []; const seen = new Set();
+    for (const row of rx) {
+      const m = meds.find((x) => x.id === Number(row.medicationId)); if (!m) continue;
+      if (seen.has(m.id)) w.push(`Trùng thuốc: ${m.name} xuất hiện nhiều lần`); seen.add(m.id);
+      if (Number(row.quantity) > 60) w.push(`Số lượng cao bất thường: ${m.name} × ${row.quantity}`);
+      if (m.stock < Number(row.quantity)) w.push(`Tồn kho không đủ: ${m.name} (tồn ${m.stock})`);
+    }
+    return w;
+  })();
+
+  // OLD-2 — tạo lịch tái khám
+  const createFollowUp = async () => {
+    setFollowMsg('');
+    if (!followSlotId) { setFollowMsg('Hãy chọn khung giờ tái khám.'); return; }
+    const res = await fetch('/api/doctor/follow-up', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
+      body: JSON.stringify({ appointmentId: parseInt(appointmentId), slotId: Number(followSlotId), note: 'Tái khám' }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      setFollowMsg(`✓ Đã hẹn tái khám — mã ${d.code}`);
+      setFollowSlots((s) => s.filter((x) => x.id !== Number(followSlotId)));
+      setFollowSlotId('');
+    } else setFollowMsg(d.error || 'Không tạo được lịch tái khám');
   };
 
   if (!ctx) return (<div><Nav /><div className="max-w-4xl mx-auto p-8 text-muted">Đang tải...</div></div>);
@@ -157,7 +190,17 @@ export default function ExamPage() {
             );
           })}
         </div>
-        <div className="text-sm text-muted mb-6">Tiền thuốc: <span className="font-semibold text-ink">{money(medTotal)}</span></div>
+        <div className="text-sm text-muted mb-3">Tiền thuốc: <span className="font-semibold text-ink">{money(medTotal)}</span></div>
+
+        {/* OLD-4 — Cảnh báo y khoa tự động */}
+        {medWarnings.length > 0 && (
+          <div className="bg-[#FEF3C7] border border-[#F59E0B] rounded-xl p-3 mb-6">
+            <div className="font-semibold text-[#92400E] text-sm mb-1">⚠ Cảnh báo y khoa (bác sĩ xác nhận trước khi hoàn tất)</div>
+            <ul className="list-disc pl-5 text-sm text-[#92400E]">
+              {medWarnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          </div>
+        )}
 
         {/* Tổng kết hóa đơn dự kiến */}
         <div className="bg-cream rounded-2xl p-4 mb-4 text-sm">
@@ -165,6 +208,21 @@ export default function ExamPage() {
           <div className="flex justify-between"><span className="text-muted">Phí CLS</span><span>{money(labTotal)}</span></div>
           <div className="flex justify-between"><span className="text-muted">Tiền thuốc</span><span>{money(medTotal)}</span></div>
           <div className="flex justify-between border-t border-[#F0E6E0] mt-2 pt-2 font-bold"><span>Tổng dự kiến</span><span className="text-coral">{money(examFee + labTotal + medTotal)}</span></div>
+        </div>
+
+        {/* OLD-2 — Hẹn tái khám */}
+        <div className="bg-white rounded-2xl border border-[#F0E6E0] shadow-sm p-4 mb-6">
+          <h2 className="font-bold text-lg mb-2">Hẹn tái khám (tùy chọn)</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={followSlotId} onChange={(e) => setFollowSlotId(e.target.value)} className="flex-1 min-w-[200px] border border-[#F0E6E0] rounded-lg px-3 py-2 text-sm">
+              <option value="">— Chọn khung giờ tái khám —</option>
+              {followSlots.map((s) => (
+                <option key={s.id} value={s.id}>{new Date(s.date).toLocaleDateString('vi-VN')} · {s.startTime}</option>
+              ))}
+            </select>
+            <button onClick={createFollowUp} className="border border-coral text-coral font-semibold px-4 py-2 rounded-xl text-sm">Tạo lịch tái khám</button>
+          </div>
+          {followMsg && <p className="text-sm mt-2 font-medium text-greenx">{followMsg}</p>}
         </div>
 
         {msg && <p className="text-greenx mb-3 text-sm font-medium">{msg}</p>}

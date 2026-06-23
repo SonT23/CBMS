@@ -30,6 +30,20 @@ export default function CashierPage() {
     load();
   };
 
+  const refund = async (invoiceId) => {
+    setMsg('');
+    const reason = typeof window !== 'undefined' ? window.prompt('Lý do hoàn tiền:') : '';
+    if (reason === null) return;
+    const res = await fetch('/api/cashier/refund', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ invoiceId, reason }),
+    });
+    const d = await res.json();
+    setMsg(res.ok ? `Đã hoàn tiền hóa đơn ${d.invoice.code}` : (d.error || 'Lỗi hoàn tiền'));
+    load();
+  };
+
   const money = (n) => n.toLocaleString('vi-VN') + 'đ';
 
   return (
@@ -79,10 +93,11 @@ export default function CashierPage() {
         <div className="space-y-2">
           {data.paid.length === 0 && <p className="text-muted text-sm">Chưa có hóa đơn đã thu.</p>}
           {data.paid.map((inv) => (
-            <div key={inv.id} className="bg-cream rounded-xl px-4 py-3 flex items-center justify-between text-sm">
-              <span className="font-medium">{inv.patient.fullName} · {inv.code}</span>
+            <div key={inv.id} className="bg-cream rounded-xl px-4 py-3 flex items-center justify-between text-sm gap-3">
+              <span className="font-medium flex-1">{inv.patient.fullName} · {inv.code}</span>
               <span className="text-muted">{inv.paidAt ? new Date(inv.paidAt).toLocaleString('vi-VN') : ''}</span>
-              <span className="font-bold text-greenx">{money(inv.totalAmount)}</span>
+              <span className="font-bold text-greenx w-24 text-right">{money(inv.totalAmount)}</span>
+              <button onClick={() => refund(inv.id)} className="text-coral font-semibold border border-[#F0E6E0] rounded-lg px-2 py-1">Hoàn tiền</button>
             </div>
           ))}
         </div>
