@@ -12,9 +12,12 @@ export default function BookingPage() {
   const [note, setNote] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [profiles, setProfiles] = useState([]);
+  const [profileId, setProfileId] = useState('');
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) { router.push('/login'); return; }
+    const tk = localStorage.getItem('token');
+    if (!tk) { router.push('/login'); return; }
     const params = new URLSearchParams(window.location.search);
     const id = parseInt(params.get('doctorId'));
     const preSlot = parseInt(params.get('slotId'));
@@ -22,6 +25,8 @@ export default function BookingPage() {
     if (preSlot) setSlotId(preSlot);
     fetch(`/api/doctors/${id}`).then((r) => (r.ok ? r.json() : null)).then(setDoctor);
     fetch(`/api/doctors/${id}/slots`).then((r) => r.json()).then(setSlots);
+    fetch('/api/profiles', { headers: { Authorization: `Bearer ${tk}` } }).then((r) => r.json())
+      .then((ps) => { setProfiles(ps); if (ps[0]) setProfileId(String(ps[0].id)); });
   }, []);
 
   const book = async () => {
@@ -29,7 +34,7 @@ export default function BookingPage() {
     const res = await fetch('/api/appointments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-      body: JSON.stringify({ doctorId, slotId, note }),
+      body: JSON.stringify({ doctorId, slotId, note, profileId: profileId ? Number(profileId) : undefined }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error || 'Đặt lịch thất bại'); return; }
@@ -58,6 +63,13 @@ export default function BookingPage() {
       <div className="max-w-2xl mx-auto p-8">
         <h1 className="text-2xl font-bold mb-1">Đặt lịch khám</h1>
         {doctor && <p className="text-muted mb-6">{doctor.fullName} · {doctor.specialty} · {doctor.fee.toLocaleString('vi-VN')}đ</p>}
+        <h2 className="font-semibold mb-2">Đặt cho hồ sơ</h2>
+        <div className="flex items-center gap-2 mb-6">
+          <select value={profileId} onChange={(e) => setProfileId(e.target.value)} className="flex-1 border border-[#F0E6E0] bg-white rounded-xl px-4 py-3">
+            {profiles.map((p) => <option key={p.id} value={p.id}>{p.fullName}{p.relation ? ` (${p.relation})` : ''}</option>)}
+          </select>
+          <button type="button" onClick={() => router.push('/profiles')} className="text-sm text-coral font-semibold border border-[#F0E6E0] rounded-xl px-3 py-3 whitespace-nowrap">+ Hồ sơ</button>
+        </div>
         <h2 className="font-semibold mb-3">Chọn khung giờ trống</h2>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-6">
           {slots.map((s) => (

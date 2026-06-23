@@ -15,7 +15,7 @@ model User {
   role         String   @default("PATIENT")
   status       String   @default("ACTIVE")
   createdAt    DateTime @default(now()) @map("created_at")
-  patient      Patient?
+  patients     Patient[]
   doctor       Doctor?
 
   @@map("nguoi_dung")
@@ -23,9 +23,18 @@ model User {
 
 model Patient {
   id           Int           @id @default(autoincrement())
-  userId       Int           @unique @map("nguoi_dung_id")
+  userId       Int           @map("nguoi_dung_id")
   fullName     String          @map("ho_ten")
   gender       String?         @map("gioi_tinh")
+  dob            DateTime?       @map("ngay_sinh")
+  phone          String?         @map("sdt")
+  cccd           String?         @map("cccd")
+  bhyt           String?         @map("so_bhyt")
+  address        String?         @map("dia_chi")
+  relation       String?         @map("quan_he")
+  medicalHistory String?         @map("tien_su") @db.Text
+  allergy        String?         @map("di_ung")
+  bloodType      String?         @map("nhom_mau")
   user          User            @relation(fields: [userId], references: [id])
   appointments  Appointment[]
   records       MedicalRecord[]
@@ -33,6 +42,7 @@ model Patient {
   labOrders     LabOrder[]
   prescriptions Prescription[]
 
+  @@index([userId])
   @@map("benh_nhan")
 }
 

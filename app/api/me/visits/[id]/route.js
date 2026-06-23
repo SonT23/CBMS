@@ -6,8 +6,8 @@ import { getUser } from '@/lib/auth';
 export async function GET(req, { params }) {
   const u = getUser(req);
   if (!u) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
-  const patient = await prisma.patient.findUnique({ where: { userId: u.uid } });
-  if (!patient) return NextResponse.json({ error: 'Không tìm thấy hồ sơ' }, { status: 404 });
+  const profiles = await prisma.patient.findMany({ where: { userId: u.uid } });
+  const profileIds = profiles.map((p) => p.id);
   const id = parseInt(params.id);
   const v = await prisma.appointment.findUnique({
     where: { id },
@@ -22,7 +22,7 @@ export async function GET(req, { params }) {
   });
   if (!v) return NextResponse.json({ error: 'Không tìm thấy lượt khám' }, { status: 404 });
   // Chỉ cho xem lượt khám của chính mình (RBAC theo sở hữu)
-  if (v.patientId !== patient.id) return NextResponse.json({ error: 'Không có quyền xem lượt khám này' }, { status: 403 });
+  if (!profileIds.includes(v.patientId)) return NextResponse.json({ error: 'Không có quyền xem lượt khám này' }, { status: 403 });
   // Chỉ hiển thị khi đã có bệnh án (đã khám)
   if (!v.record) return NextResponse.json({ error: 'Lượt khám chưa hoàn tất' }, { status: 409 });
   return NextResponse.json(v);

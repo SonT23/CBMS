@@ -9,8 +9,7 @@ export async function POST(req) {
   const exists = await prisma.user.findFirst({ where: { OR: [{ email }, ...(phone ? [{ phone }] : [])] } });
   if (exists) return NextResponse.json({ error: 'Email hoặc SĐT đã tồn tại' }, { status: 409 });
   const user = await prisma.user.create({
-    data: { email, phone: phone || null, passwordHash: hashPassword(password), role: 'PATIENT', patient: { create: { fullName } } },
-    include: { patient: true },
+    data: { email, phone: phone || null, passwordHash: hashPassword(password), role: 'PATIENT', patients: { create: { fullName, phone: phone || null, relation: 'Bản thân' } } },
   });
   const token = signToken({ uid: user.id, email, role: 'PATIENT' });
   return NextResponse.json({ token, user: { id: user.id, email, role: 'PATIENT', fullName } });

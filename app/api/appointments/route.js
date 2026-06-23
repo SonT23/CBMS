@@ -5,11 +5,12 @@ import { getUser } from '@/lib/auth';
 export async function GET(req) {
   const u = getUser(req);
   if (!u) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
-  const patient = await prisma.patient.findUnique({ where: { userId: u.uid } });
-  if (!patient) return NextResponse.json([]);
+  // Đa hồ sơ: lấy lịch của TẤT CẢ hồ sơ thuộc tài khoản
+  const profiles = await prisma.patient.findMany({ where: { userId: u.uid } });
+  if (profiles.length === 0) return NextResponse.json([]);
   const appts = await prisma.appointment.findMany({
-    where: { patientId: patient.id },
-    include: { doctor: { include: { specialty: true } }, slot: true },
+    where: { patientId: { in: profiles.map((p) => p.id) } },
+    include: { doctor: { include: { specialty: true } }, slot: true, patient: true },
     orderBy: { createdAt: 'desc' },
   });
   return NextResponse.json(appts);
@@ -18,9 +19,12 @@ export async function GET(req) {
 export async function POST(req) {
   const u = getUser(req);
   if (!u) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
-  const patient = await prisma.patient.findUnique({ where: { userId: u.uid } });
-  if (!patient) return NextResponse.json({ error: 'Không tìm thấy hồ sơ bệnh nhân' }, { status: 400 });
-  const { doctorId, slotId, note } = await req.json();
+  const { doctorId, slotId, note, profileId } = await req.json();
+  // Chọn hồ sơ đi khám (đặt hộ): mặc định là hồ sơ đầu tiên (bản thân) nếu không chỉ định
+  const profiles = await prisma.patient.findMany({ where: { userId: u.uid }, orderBy: { id: 'asc' } });
+  if (profiles.length === 0) return NextResponse.json({ error: 'Không tìm thấy hồ sơ bệnh nhân' }, { status: 400 });
+  const patient = profileId ? profiles.find((p) => p.id === Number(profileId)) : profiles[0];
+  if (!patient) return NextResponse.json({ error: 'Hồ sơ không hợp lệ' }, { status: 400 });
   try {
     const appt = await prisma.$transaction(async (tx) => {
       const slot = await tx.scheduleSlot.findUnique({ where: { id: slotId } });
