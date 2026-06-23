@@ -15,9 +15,12 @@ export default function BookingPage() {
 
   useEffect(() => {
     if (!localStorage.getItem('token')) { router.push('/login'); return; }
-    const id = parseInt(new URLSearchParams(window.location.search).get('doctorId'));
+    const params = new URLSearchParams(window.location.search);
+    const id = parseInt(params.get('doctorId'));
+    const preSlot = parseInt(params.get('slotId'));
     setDoctorId(id);
-    fetch('/api/doctors').then((r) => r.json()).then((ds) => setDoctor(ds.find((d) => d.id === id)));
+    if (preSlot) setSlotId(preSlot);
+    fetch(`/api/doctors/${id}`).then((r) => (r.ok ? r.json() : null)).then(setDoctor);
     fetch(`/api/doctors/${id}/slots`).then((r) => r.json()).then(setSlots);
   }, []);
 

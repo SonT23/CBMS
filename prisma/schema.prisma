@@ -16,6 +16,7 @@ model User {
   status       String   @default("ACTIVE")
   createdAt    DateTime @default(now()) @map("created_at")
   patient      Patient?
+  doctor       Doctor?
 
   @@map("nguoi_dung")
 }
@@ -23,10 +24,14 @@ model User {
 model Patient {
   id           Int           @id @default(autoincrement())
   userId       Int           @unique @map("nguoi_dung_id")
-  fullName     String        @map("ho_ten")
-  gender       String?       @map("gioi_tinh")
-  user         User          @relation(fields: [userId], references: [id])
-  appointments Appointment[]
+  fullName     String          @map("ho_ten")
+  gender       String?         @map("gioi_tinh")
+  user          User            @relation(fields: [userId], references: [id])
+  appointments  Appointment[]
+  records       MedicalRecord[]
+  invoices      Invoice[]
+  labOrders     LabOrder[]
+  prescriptions Prescription[]
 
   @@map("benh_nhan")
 }
@@ -40,15 +45,20 @@ model Specialty {
 }
 
 model Doctor {
-  id           Int            @id @default(autoincrement())
-  fullName     String         @map("ho_ten")
-  specialtyId  Int            @map("chuyen_khoa_id")
-  fee          Int            @default(0) @map("phi_kham")
-  experience   Int            @default(0) @map("so_nam_kinh_nghiem")
-  rating       Float          @default(5)
-  specialty    Specialty      @relation(fields: [specialtyId], references: [id])
-  slots        ScheduleSlot[]
-  appointments Appointment[]
+  id           Int             @id @default(autoincrement())
+  userId       Int?            @unique @map("nguoi_dung_id")
+  fullName     String          @map("ho_ten")
+  specialtyId  Int             @map("chuyen_khoa_id")
+  fee          Int             @default(0) @map("phi_kham")
+  experience   Int             @default(0) @map("so_nam_kinh_nghiem")
+  rating       Float           @default(5)
+  user         User?           @relation(fields: [userId], references: [id])
+  specialty    Specialty       @relation(fields: [specialtyId], references: [id])
+  slots         ScheduleSlot[]
+  appointments  Appointment[]
+  records       MedicalRecord[]
+  labOrders     LabOrder[]
+  prescriptions Prescription[]
 
   @@map("bac_si")
 }
@@ -67,17 +77,150 @@ model ScheduleSlot {
 }
 
 model Appointment {
-  id        Int          @id @default(autoincrement())
-  code      String       @unique @map("ma_booking")
-  patientId Int          @map("benh_nhan_id")
-  doctorId  Int          @map("bac_si_id")
-  slotId    Int          @unique @map("slot_id")
-  status    String       @default("CONFIRMED")
-  note      String?      @map("ghi_chu")
-  createdAt DateTime     @default(now()) @map("created_at")
-  patient   Patient      @relation(fields: [patientId], references: [id])
-  doctor    Doctor       @relation(fields: [doctorId], references: [id])
-  slot      ScheduleSlot @relation(fields: [slotId], references: [id])
+  id          Int            @id @default(autoincrement())
+  code        String         @unique @map("ma_booking")
+  patientId   Int            @map("benh_nhan_id")
+  doctorId    Int            @map("bac_si_id")
+  slotId      Int            @unique @map("slot_id")
+  status      String         @default("CONFIRMED")
+  note        String?        @map("ghi_chu")
+  queueNumber Int?           @map("so_thu_tu")
+  checkedInAt DateTime?      @map("check_in_luc")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  patient     Patient        @relation(fields: [patientId], references: [id])
+  doctor      Doctor         @relation(fields: [doctorId], references: [id])
+  slot         ScheduleSlot   @relation(fields: [slotId], references: [id])
+  record       MedicalRecord?
+  invoice      Invoice?
+  labOrder     LabOrder?
+  prescription Prescription?
 
   @@map("lich_kham")
+}
+
+model MedicalRecord {
+  id            Int         @id @default(autoincrement())
+  appointmentId Int         @unique @map("lich_kham_id")
+  patientId     Int         @map("benh_nhan_id")
+  doctorId      Int         @map("bac_si_id")
+  bloodPressure String?     @map("huyet_ap")
+  temperature   Float?      @map("nhiet_do")
+  heartRate     Int?        @map("nhip_tim")
+  weight        Float?      @map("can_nang")
+  height        Float?      @map("chieu_cao")
+  spo2          Int?        @map("spo2")
+  bmi           Float?      @map("bmi")
+  symptoms      String?     @map("trieu_chung") @db.Text
+  diagnosis     String?     @map("chan_doan") @db.Text
+  conclusion    String?     @map("ket_luan") @db.Text
+  advice        String?     @map("loi_dan") @db.Text
+  status        String      @default("IN_PROGRESS")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  patient       Patient     @relation(fields: [patientId], references: [id])
+  doctor        Doctor      @relation(fields: [doctorId], references: [id])
+
+  @@map("benh_an")
+}
+
+model Invoice {
+  id            Int         @id @default(autoincrement())
+  code          String      @unique @map("ma_hoa_don")
+  appointmentId Int         @unique @map("lich_kham_id")
+  patientId     Int         @map("benh_nhan_id")
+  examFee       Int         @default(0) @map("phi_kham")
+  labFee        Int         @default(0) @map("phi_cls")
+  medFee        Int         @default(0) @map("phi_thuoc")
+  totalAmount   Int         @default(0) @map("tong_tien")
+  status        String      @default("PENDING_PAYMENT") @map("trang_thai")
+  method        String?     @map("phuong_thuc")
+  paidAt        DateTime?   @map("thanh_toan_luc")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  patient       Patient     @relation(fields: [patientId], references: [id])
+
+  @@map("hoa_don")
+}
+
+// ===== M5 — Cận lâm sàng =====
+model LabTest {
+  id    Int            @id @default(autoincrement())
+  name  String         @map("ten")
+  price Int            @default(0) @map("gia")
+  items LabOrderItem[]
+
+  @@map("dich_vu_cls")
+}
+
+model LabOrder {
+  id            Int            @id @default(autoincrement())
+  code          String         @unique @map("ma_phieu")
+  appointmentId Int            @unique @map("lich_kham_id")
+  patientId     Int            @map("benh_nhan_id")
+  doctorId      Int            @map("bac_si_id")
+  status        String         @default("NEW")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  appointment   Appointment    @relation(fields: [appointmentId], references: [id])
+  patient       Patient        @relation(fields: [patientId], references: [id])
+  doctor        Doctor         @relation(fields: [doctorId], references: [id])
+  items         LabOrderItem[]
+
+  @@map("phieu_chi_dinh_cls")
+}
+
+model LabOrderItem {
+  id         Int      @id @default(autoincrement())
+  labOrderId Int      @map("phieu_id")
+  labTestId  Int      @map("dich_vu_id")
+  testName   String   @map("ten_dv")
+  price      Int      @default(0) @map("gia")
+  result     String?  @map("ket_qua") @db.Text
+  abnormal   Boolean  @default(false) @map("bat_thuong")
+  labOrder   LabOrder @relation(fields: [labOrderId], references: [id])
+  labTest    LabTest  @relation(fields: [labTestId], references: [id])
+
+  @@map("chi_tiet_chi_dinh")
+}
+
+// ===== M6 — Dược & Kho =====
+model Medication {
+  id           Int                @id @default(autoincrement())
+  name         String             @map("ten")
+  unit         String             @default("viên") @map("don_vi")
+  price        Int                @default(0) @map("gia")
+  stock        Int                @default(0) @map("ton_kho")
+  reorderLevel Int                @default(20) @map("muc_canh_bao")
+  items        PrescriptionItem[]
+
+  @@map("thuoc")
+}
+
+model Prescription {
+  id            Int                @id @default(autoincrement())
+  code          String             @unique @map("ma_don")
+  appointmentId Int                @unique @map("lich_kham_id")
+  patientId     Int                @map("benh_nhan_id")
+  doctorId      Int                @map("bac_si_id")
+  status        String             @default("NEW")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  appointment   Appointment        @relation(fields: [appointmentId], references: [id])
+  patient       Patient            @relation(fields: [patientId], references: [id])
+  doctor        Doctor             @relation(fields: [doctorId], references: [id])
+  items         PrescriptionItem[]
+
+  @@map("don_thuoc")
+}
+
+model PrescriptionItem {
+  id             Int          @id @default(autoincrement())
+  prescriptionId Int          @map("don_thuoc_id")
+  medicationId   Int          @map("thuoc_id")
+  medName        String       @map("ten_thuoc")
+  quantity       Int          @default(1) @map("so_luong")
+  dosage         String?      @map("lieu_dung")
+  price          Int          @default(0) @map("gia")
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  medication     Medication   @relation(fields: [medicationId], references: [id])
+
+  @@map("chi_tiet_don_thuoc")
 }

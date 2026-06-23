@@ -8,5 +8,5 @@ export async function POST(req) {
   if (!user || !verifyPassword(password, user.passwordHash))
     return NextResponse.json({ error: 'Sai email hoặc mật khẩu' }, { status: 401 });
   const token = signToken({ uid: user.id, email, role: user.role });
-  return NextResponse.json({ token, user: { id: user.id, email, fullName: user.patient?.fullName || '' } });
+  return NextResponse.json({ token, user: { id: user.id, email, role: user.role, fullName: user.patient?.fullName || '' } });
 }

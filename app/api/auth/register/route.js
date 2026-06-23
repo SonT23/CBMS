@@ -13,5 +13,5 @@ export async function POST(req) {
     include: { patient: true },
   });
   const token = signToken({ uid: user.id, email, role: 'PATIENT' });
-  return NextResponse.json({ token, user: { id: user.id, email, fullName } });
+  return NextResponse.json({ token, user: { id: user.id, email, role: 'PATIENT', fullName } });
 }

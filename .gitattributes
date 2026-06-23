@@ -1,0 +1,23 @@
+# Chuẩn hóa xuống dòng: lưu LF trong repo, tránh cảnh báo LF->CRLF trên Windows
+* text=auto eol=lf
+
+# Ép LF cho file mã nguồn/text
+*.js      text eol=lf
+*.jsx     text eol=lf
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.json    text eol=lf
+*.css     text eol=lf
+*.md      text eol=lf
+*.prisma  text eol=lf
+
+# File nhị phân: không chuẩn hóa
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.xlsx  binary
+*.woff  binary
+*.woff2 binary

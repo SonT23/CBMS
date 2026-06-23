@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { homeForRole } from '@/lib/roles';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function LoginPage() {
     if (!res.ok) { setError(data.error || 'Có lỗi xảy ra'); return; }
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    router.push('/doctors');
+    router.push(homeForRole(data.user.role));
   };
 
   return (
