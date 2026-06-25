@@ -35,11 +35,18 @@ export default function HistoryPage() {
                 </div>
                 {v.diagnosis && <div className="text-sm text-ink mt-1">Chẩn đoán: {v.diagnosis}</div>}
               </div>
-              <div className="text-right">
+              <div className="text-right" onClick={(e) => e.stopPropagation()}>
                 <div className="font-bold text-coral">{money(v.total)}</div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${v.invoiceStatus === 'PAID' ? 'bg-[#E6F4EC] text-greenx' : 'bg-[#FFF4E5] text-gold'}`}>
-                  {v.invoiceStatus === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}
+                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${v.invoiceStatus === 'PAID' ? 'bg-[#E6F4EC] text-greenx' : v.invoiceStatus === 'REFUNDED' ? 'bg-[#FCE8E6] text-coral' : 'bg-[#FFF4E5] text-gold'}`}>
+                  {v.invoiceStatus === 'PAID' ? 'Đã thanh toán' : v.invoiceStatus === 'REFUNDED' ? 'Đã hoàn tiền' : 'Chờ thanh toán'}
                 </span>
+                {v.invoiceId && (
+                  <div className="mt-2">
+                    {v.invoiceStatus === 'PENDING_PAYMENT'
+                      ? <button onClick={() => router.push(`/pay/${v.invoiceId}`)} className="text-xs bg-coral text-white font-semibold px-3 py-1.5 rounded-lg">Thanh toán online</button>
+                      : <button onClick={() => router.push(`/invoice/${v.invoiceId}`)} className="text-xs text-teal font-semibold border border-[#F0E6E0] px-3 py-1.5 rounded-lg">Hóa đơn điện tử</button>}
+                  </div>
+                )}
               </div>
             </div>
           ))}

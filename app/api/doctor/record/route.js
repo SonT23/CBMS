@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUser } from '@/lib/auth';
+import { notify, patientUserId } from '@/lib/notify';
 
 const genCode = (p) => p + '-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + String(Math.floor(1000 + Math.random() * 9000));
 
@@ -104,5 +105,10 @@ export async function POST(req) {
     }
     return { record, invoice, warnings };
   });
+  // FN-08 — thông báo cho bệnh nhân khi hoàn tất khám
+  if (complete && result.invoice) {
+    const uid = await patientUserId(appt.patientId);
+    await notify(uid, 'EXAM_DONE', 'Khám hoàn tất', `Lượt khám ${appt.code} đã hoàn tất. Hóa đơn ${result.invoice.totalAmount.toLocaleString('vi-VN')}đ chờ thanh toán.`, '/history');
+  }
   return NextResponse.json({ ok: true, ...result });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUser } from '@/lib/auth';
+import { notify, patientUserId } from '@/lib/notify';
 
 // action: 'receive' | 'save' | 'send'
 export async function POST(req) {
@@ -27,5 +28,9 @@ export async function POST(req) {
     const status = action === 'send' ? 'SENT_DOCTOR' : 'HAS_RESULT';
     await tx.labOrder.update({ where: { id: labOrderId }, data: { status } });
   });
+  if (action === 'send') {
+    const uid = await patientUserId(order.patientId);
+    await notify(uid, 'LAB_RESULT', 'Đã có kết quả cận lâm sàng', 'Kết quả CLS của bạn đã sẵn sàng. Xem trong Lịch sử khám.', '/history');
+  }
   return NextResponse.json({ ok: true });
 }

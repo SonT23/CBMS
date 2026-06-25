@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUser } from '@/lib/auth';
 import crypto from 'crypto';
+import { notify, patientUserId } from '@/lib/notify';
 
 // OLD-2 / ITS-39 — Bác sĩ tạo lịch hẹn tái khám cho bệnh nhân (lịch mới gắn lich_goc_id).
 export async function POST(req) {
@@ -29,6 +30,8 @@ export async function POST(req) {
         },
       });
     });
+    const uid = await patientUserId(origin.patientId);
+    await notify(uid, 'FOLLOW_UP', 'Lịch tái khám', `Bác sĩ đã hẹn bạn tái khám (mã ${appt.code}). Xem chi tiết trong Lịch hẹn của tôi.`, '/appointments');
     return NextResponse.json(appt);
   } catch (e) {
     return NextResponse.json({ error: 'Khung giờ không hợp lệ hoặc đã bị đặt' }, { status: 409 });

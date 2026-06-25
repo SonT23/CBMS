@@ -17,6 +17,7 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   patients     Patient[]
   doctor       Doctor?
+  notifications Notification[]
 
   @@map("nguoi_dung")
 }
@@ -97,6 +98,22 @@ model DayOff {
   @@map("ngay_nghi")
 }
 
+// ===== FN-08 — Thông báo trong ứng dụng =====
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("nguoi_dung_id")
+  type      String   @map("loai")
+  title     String   @map("tieu_de")
+  body      String?  @map("noi_dung") @db.Text
+  link      String?  @map("lien_ket")
+  isRead    Boolean  @default(false) @map("da_doc")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("thong_bao")
+}
+
 model ScheduleSlot {
   id          Int          @id @default(autoincrement())
   doctorId    Int          @map("bac_si_id")
@@ -172,6 +189,8 @@ model Invoice {
   totalAmount   Int         @default(0) @map("tong_tien")
   status        String      @default("PENDING_PAYMENT") @map("trang_thai")
   method        String?     @map("phuong_thuc")
+  paymentRef    String?     @map("ma_giao_dich")
+  eInvoiceCode  String?     @map("ma_hddt")
   paidAt        DateTime?   @map("thanh_toan_luc")
   refundedAt    DateTime?   @map("hoan_luc")
   refundReason  String?     @map("ly_do_hoan")

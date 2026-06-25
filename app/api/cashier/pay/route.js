@@ -11,9 +11,10 @@ export async function POST(req) {
   const inv = await prisma.invoice.findUnique({ where: { id: invoiceId } });
   if (!inv) return NextResponse.json({ error: 'Không tìm thấy hóa đơn' }, { status: 404 });
   if (inv.status === 'PAID') return NextResponse.json({ error: 'Hóa đơn đã thanh toán' }, { status: 409 });
+  const eCode = 'HDDT-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + String(Math.floor(1000 + Math.random() * 9000));
   const updated = await prisma.invoice.update({
     where: { id: invoiceId },
-    data: { status: 'PAID', method: method || 'CASH', paidAt: new Date() },
+    data: { status: 'PAID', method: method || 'CASH', eInvoiceCode: eCode, paidAt: new Date() },
   });
   return NextResponse.json({ ok: true, invoice: updated });
 }

@@ -29,6 +29,7 @@ export async function GET(req) {
     specialty: a.doctor.specialty.name,
     diagnosis: a.record?.diagnosis || a.record?.conclusion || '',
     status: a.status,
+    invoiceId: a.invoice?.id || null,
     invoiceStatus: a.invoice?.status || null,
     total: a.invoice?.totalAmount || 0,
   })));
